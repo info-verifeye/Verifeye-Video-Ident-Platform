@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require("body-parser");
 const fs = require('fs');
-const CryptoJS = require("crypto-js");
+const crypto = require('crypto');
 const app = express();
 
 // output location of received data - creates new if not existing
@@ -14,14 +14,41 @@ const webhook_auth_key = "";  // authentication key
 const webhook_encryption = false; // If true, received webhook's data will be decrypt.
 const encryption_key = "";  // webhook encryption key
 
+
+const cryptoConfig = {
+    cipherAlgorithm: 'aes-256-gcm',
+    iterations: 1,
+    keyLength: 32,
+    saltLength: 16,
+    ivLength: 12,
+    tagLength: 16,
+    digest: 'sha512'
+}
+
 /*
     decrypt data
 */
 let decrypt = async (data) => {
-    var bytes  = CryptoJS.AES.decrypt(data, encryption_key);
-    let eVal = bytes.toString(CryptoJS.enc.Utf8)
+    try{
+        const encbuf = Buffer.from(data, 'base64');
+        const salt = encbuf.subarray(0, cryptoConfig.saltLength);
+        const iv = encbuf.subarray(cryptoConfig.saltLength, cryptoConfig.saltLength + cryptoConfig.ivLength);
+        const tag = encbuf.subarray(encbuf.length - cryptoConfig.tagLength);
+        const ciphertext = encbuf.subarray(
+            cryptoConfig.saltLength + cryptoConfig.ivLength,
+            encbuf.length - cryptoConfig.tagLength
+        );
 
-    return await (eVal ? JSON.parse(eVal) : null);
+        const key = crypto.pbkdf2Sync(encryption_key, salt, cryptoConfig.iterations,
+            cryptoConfig.keyLength, cryptoConfig.digest);
+
+        const decipher = crypto.createDecipheriv(cryptoConfig.cipherAlgorithm, key, iv);
+        decipher.setAuthTag(tag);
+        const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        return JSON.parse(decrypted);
+    }catch(e){
+        return '';
+    }
 }
 
 
@@ -136,6 +163,11 @@ let processWebhookData = (data) => {
         fs.writeFileSync(logHelperFilename(dirUploads + data.customerUuid + '-residentialPermitBackImage.'+fileExt), Buffer.from(data.AdditionalFields.residentialPermitBackImage.replace('data:image/'+fileExt+';base64,', ''), 'base64'));
     }
 
+    if (data.AdditionalFields && data.AdditionalFields.PDF) {
+        let fileExt = data.AdditionalFields.PDF.match(/(application)(\/)(pdf)(\;)/)
+            fileExt = fileExt && fileExt[3] ? fileExt[3] : 'pdf';
+        fs.writeFileSync(logHelperFilename(dirUploads + data.customerUuid + '-PDF.'+fileExt), Buffer.from(data.AdditionalFields.PDF.replace('data:application/'+fileExt+';base64,', ''), 'base64'));
+    }
 
 
     if (data.VideoCall_Information && data.VideoCall_Information.liveImage) {
@@ -168,4 +200,3 @@ let processWebhookData = (data) => {
 console.log();
 console.log("======== webhook receiver listening to /webhook port:" + portWebhook + " ========");
 console.log();
-

@@ -1,6 +1,6 @@
-# Webhook Receiver Node.js Test Server
+# Webhook Receiver Python Test Server
 
-This is a README file for the Webhook Receiver Node.js test server stub. It serves as a preliminary example of integration with webhook data.
+This is a README file for the Webhook Receiver Python test server stub. It serves as a preliminary example of integration with webhook data.
 
 ## Getting Started
 
@@ -8,9 +8,7 @@ Follow these steps to set up the test server:
 
 ### Step 1: Install Dependencies
 
-Install the required dependencies and build the project with npm. Run the following command in the desired location:
-
-    npm install
+Require Python3
 
 ### Step 2: Replace Your Authorization Key and Encryption Key
 
@@ -18,7 +16,7 @@ In the app.js file, replace the authorization key and encryption key with your o
 
 ### Step 3: start the stub by running 
 
-    node app.js
+    python3 app.py
 
 ### Step 4: Monitor Logs
 
